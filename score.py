@@ -7,6 +7,7 @@ import subprocess;
 import sys;
 import os;
 import io;
+import json
 
 __author__ = "oe"
 __version__ = "2018"
@@ -23,3 +24,8 @@ def starsem_score(gold, system, file = sys.stdout):
     subprocess.run(command, stdout = stream);
   os.unlink(one[1]);
   os.unlink(two[1]);
+
+
+if __name__ == '__main__':
+  with open(sys.argv[1]) as gold, open(sys.argv[2]) as system:
+    starsem_score(map(json.loads, gold), map(json.loads, system))

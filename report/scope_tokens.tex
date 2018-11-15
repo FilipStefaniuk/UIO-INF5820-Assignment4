@@ -1,0 +1,10 @@
+\begin{tabular}{lrrrrrrrr}
+    \toprule
+    {}                   & gold & system &   tp &  fp &  fn & precision (\%) & recall (\%) & F1 (\%) \\
+    \midrule
+    BiLSTM - C           & 1348 &   1156 & 1054 & 102 & 294 &          91.18 &       78.19 &   84.19 \\
+    BiLSTM - C + PoS     & 1348 &   1168 & 1069 &  96 & 279 &          91.76 &       79.30 &   \textbf{85.08} \\ 
+    BiLSTM - C + E       & 1348 &   1215 & 1075 & 149 & 273 &          88.48 &       79.75 &   83.89 \\
+    BiLSTM - C + E + PoS & 1348 &   1245 & 1084 & 161 & 264 &          87.07 &       80.42 &   83.61 \\
+    \bottomrule
+\end{tabular}

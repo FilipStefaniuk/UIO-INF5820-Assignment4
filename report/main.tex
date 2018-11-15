@@ -31,6 +31,8 @@
 \usepackage{hyperref}
 \usepackage{wrapfig}
 \usepackage{subcaption}
+\usepackage{csquotes}
+\usepackage{xcolor}
 
 %----------------------------------------------------------------------------------------
 %	ASSIGNMENT INFORMATION
@@ -44,7 +46,222 @@
 
 \begin{document}
 
+
 \maketitle
-\section*{Introduction}
+\section{Introduction}
+TODO
+\section{Preliminaries: Making Sense of the EPE File Format}
+
+
+\subsection{Multiple negation instances}
+Approach suggested in this exercise states that when more than one negation
+cue appears in the sentence, it should be copied that many times witch each
+negation cue and scope. To practice this approach, first exercise was to rewrite
+a toy example in that manner. The result can be found in \lstinline{./data/toy_multiplied.tex}.
+
+\subsection{Working with EPE structure}
+To make working with the EPE structures simpler I have written Python class that embedds
+sentences and allows to easily extract needed information. Note that no more additional
+space or conversion is needed since the class stores all the data in the epe dictionary like
+structure and the information is extracted dynamically. Class also have static method that
+allows creating instances from json strings, thus loading epe file is simply calling this method
+on each line of the file. Sentences may be converted to \lstinline{.tt} format by calling
+\lstinline{to_tt()} method.
+
+\subsection{Summary Statistics Extractions}
+I have extracted requested statistics from all the available sentences (using both
+training and developement set). Statistics below are computed for all the types of negation
+cues and for multi-token and affix cues separately. General negation scope has on average
+length of $8$. Number of negation tokens drops extremely quickly, to the point where most of
+the negations occur only once.
+
+\begin{figure}[h]
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \input{./cues.tex}
+    \end{subfigure}
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[scale=0.5]{../figures/negation_count.png}
+    \end{subfigure}
+    \caption{General statistics for negation cues.}
+\end{figure}
+
+When analysing the multi-token negation cues it is worth noticing,
+that some of those have length equal 0, this is the case when the negation cue makes the whole sentence,
+in example \textit{"By no means."}
+
+\begin{figure}[h]
+    \begin{subfigure}{0.45\textwidth}
+        \centering
+        \input{./mul_cues.tex}
+        \subcaption{multi-token negation cues}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.45\textwidth}
+        \centering
+        \input{./affix_cues.tex}
+        \subcaption{affix negation cues}
+    \end{subfigure}
+    \caption{count and mean scope length for 10 most frequent cues}
+\end{figure}
+
+\section{A Joint Cue and Scope Sequence Tagger}
+\subsection{End-to-end Negation Resolution System}
+The Negation Resolution System that I have build uses Estimator class as a center point.
+This class is responsible for building the model and provides interface to train and evaluate 
+(it is convinient to use \lstinline{train.py} and \lstinline{eval.py} scripts). To transform
+EPE sentenceces to data format that may be feed to keras classifier, estimator makes use of
+preprocessor and postprocessor.
+\paragraph{Preprocessor} extracts relevant information from the list of sentences,
+builds numpy arrays of encoded input tokens, cue information and pos tags, with coresponding labels.
+It does that in memory efficient manner by creating numpy arrays of fixed size and filling them with
+relvant information.
+\paragraph{Postprocessor} creates new list of sentences updated with list of given predicted labels.
+To maintain compatibility with evaluation system, following heuristics are applied:
+\begin{itemize}
+\item when there is no negation cue in predicted tags for a given sentence, all the tokens are set to
+out of negation scope token \textbf{T}
+\item when all the tokens are predicted as \textbf{T} but there was a cue in input sentence,
+\lstinline{negations} is set to 0 and \lstinline{negation} is removed from every node.
+\item when token is predicted as affix tag \textbf{A}, lookup for this token is performed in the dictionary
+of known affix cues. If the token is found, \textbf{negation} information is filled accordingly otherwise
+the whole token is treated as a \textit{cue} and \textit{scope} is set to be an empty string.
+\item \textit{event} value is copied from the input data.
+\end{itemize}
+
+\subsection{Evaluation of Baseline System}
+I have evaluated baseline system using both LSTM and GRU recurrent neural network architectures.
+I have used following setting:
+\begin{itemize}
+\item input was padded to length \textbf{100}
+\item I have used randomly initialized word embeddings with size \textbf{300}.
+\item Adam optimizer with learning rate \textbf{0.0001}
+\item \textbf{200} neurons in recurrent neural network layer.
+\item early stopping after \textbf{10} epochs without loss improvement on validation data.
+\end{itemize}
+
+\begin{wrapfigure}{r}{0.5\textwidth}
+    \centering
+    \includegraphics[scale=0.25]{../figures/loss.png}
+    \caption {loss during training with LSTM (orange) and GRU (blue)}
+\end{wrapfigure}
+
+There wasn't much of a difference when training with GRU compared to LSTM.
+On the plot to the right it is shown that the loss value was almost identical.
+Training with LSTM was slightly slower (one epoch took ~50s compared to ~40s with GRU).
+Scope token detection were better captured by GRU, but LSTM had better score on
+cues detection.
+
+\paragraph{Tag accuracy} because the classes were very unbalanced model had problems
+with learning how to classify classes other that \textbf{T}. This is particulary visble
+with Affix \textbf{A} class, where there were only 33 examples and not even one was classified
+correctly.
+
+\paragraph{*SEM 2012 Scorer} evaluation using official *SEM 2012 scorer yelded very similar results.
+Score of \textit{Scope Tokens} that corresponds to \textit{False} if similar, I assume the 3\% difference
+is caused by postprocessing heuristics. \textit{Cues} and \textit{Cue} tag have score difference of more
+than 10\% this is caused by the fact that in tag evaluation affix cues are treated as a different class, and
+in official scorrer they are counted as cues. Model predicts those cues very poorly, thus they lower the
+overall score.
+\begin{figure}[h]
+\begin{subfigure}{0.45\textwidth}
+    \centering
+    \scalebox{0.8}{\input{./baseline_lstm.tex}}
+    \subcaption{LSTM}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.45\textwidth}
+    \centering
+    \scalebox{0.8}{\input{./baseline_gru.tex}}
+    \subcaption{GRU}
+\end{subfigure}
+\caption{tagging accuracy}
+\end{figure}
+
+\begin{figure}[h]
+\begin{subfigure}{\textwidth}
+    \centering
+    \input{./baseline_score_lstm.tex}
+    \subcaption{LSTM}
+    \vspace*{3mm}
+\end{subfigure}
+\begin{subfigure}{\textwidth}
+    \centering
+    \input{./baseline_score_gru.tex}
+    \subcaption{GRU}
+\end{subfigure}
+\caption{Evaluation results using official *SEM 2012 scorer}
+\end{figure}
+
+\section{Zooming in on Negation Scope}
+\subsection{Differences between systems}
+I have read the paper by Fancellu et al. and their code from github. It seems that their
+experimental setup was slightly different than what we were supposed to do. First of all,
+they used only sentences with at least one negation, which makes sence since it makes the token
+classes a bit more balanced. Second they treated affix cue differently, instead of adding
+a separate class they split them into \textit{cue} and \textit{scope} parts. Finally they focused
+on predicting scope tokens and not cues, they added cue information to input data in form of an embedding.
+\subsection{Evaluation of Negation System}
+I tried to replicate the results achieved by Fancellu by making necessairy changes in my system.
+I filtered the sentences and was left with \textbf{983} training samples and \textbf{173} validation samples.
+Data split is a bit different to the one used by Fancellu (\textbf{848} training, \textbf{235} validation) but
+I believe it is similar enough to produce comparable results. I have added cue information as an embedding
+of size \textbf{50}. I used the same hidden size, learning rate, optimizer, max input length as in paper.
+I have left affix cues as a separate class as instructed in the assignment.
+I have trained and evaluated the system with different settings:
+\begin{description}
+\item[Cue info (C)] word embedding matrix randomly initialized and updated during training.
+\item[External embeddings (E)] usage of external embeddings in non-static mode, I used 840B glove vectors.
+\item[PoS information (PoS)] separate embedding for pos tags, initilized randomly and updated during trainig.
+\end{description}
+
+\begin{figure}[h]
+\input{./scope_tokens.tex}
+\caption{results of the scope detection}
+\end{figure}
+
+In comparison to Fancellu's system, mine performed worse (Fancellu achieved best F1 score \textbf{88.72}).
+I believe the difference in the final results is caused by multiple minor differences, namely:
+\begin{itemize}
+\item the fact that in my systemaffix cues are treated differently
+\item the datasets are not exactly the same
+\item different word embeddings.
+\item different postprocessing heuristics
+\end{itemize}
+\newpage
+\section{Error Analysis: Looking on our Data}
+\begin{wrapfigure}{r}{0.6\textwidth}
+    \centering
+    \includegraphics[scale=0.6]{../figures/confusion_matrix.png}
+\end{wrapfigure}
+I decided to perform error analysis on best model that is \textbf{BiLSTM - C + POS}. I started
+with plotting confusion matrix on tag level classification. Not suprisingly the model can distinguish
+perfectly between negation cues and scopes, since we provide this information explicitly. It also looks
+that it can distinguish quite well between affix and normal negation cues, and since the 3rd part of
+this assignment was focused on detecting solely negation scopes I want to focus on that aspect in my further
+analysis. Separately for \textbf{F} misclassified as \textbf{T} and \textbf{T} misclassified as \textbf{F}
+I performed following analysis: I have selected sentences in which such misclassification occurs and sorted
+them by the number of misclassified tokens. Then I highlighted all the scope tokens (or out of scope tokens in the
+second case) from the gold standard in \textcolor{blue}{blue}, then I highlighted correct predictions in \textcolor{teal}{green}
+and misclassification in \textcolor{red}{red}.
+
+\paragraph {Scope tokens missclassified as out of scope tokens} occured more frequent, one class of
+errors that seemd to be very popular is when the negation scope continues after conjunction or punctuation:
+\begin{displayquote}
+I desire you to \textcolor{blue}{spare} \underline{no} \textcolor{blue}{expense and no pains to get at the truth}.\\
+I desire you to \textcolor{teal}{spare} \underline{no} \textcolor{teal}{expense} \textcolor{red}{and no pains to get at the truth}.
+\end{displayquote}
+Suprisingly in multiple cases subject was excluded from the negation scope:
+
+\begin{displayquote}
+The crime was ascribed to Nihilism, and \textcolor{blue}{the murderers were} \underline{never} \textcolor{blue}{arrested}.\\
+The crime was ascribed to Nihilism, and \textcolor{red}{the murderers} \textcolor{teal}{were} \underline{never} \textcolor{teal}{arrested}.
+\end{displayquote}
+
+\paragraph {Out of scope tokens classified as scope tokens} TODO
+
+\section{Further work}
+TODO
 
 \end{document}
