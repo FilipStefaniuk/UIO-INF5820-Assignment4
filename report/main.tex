@@ -49,7 +49,14 @@
 
 \maketitle
 \section{Introduction}
-TODO
+For this assignment, I have implemented Negation Resolution System, I started by creating simple baseline and
+later extended it to make it similar to the one created by Fancellu \footnote{\href{http://www.aclweb.org/anthology/P16-1047}{Fancellu 2017}}.
+Training and evaluation of the system can be easily done by running \lstinline{train.py} and \lstinline{eval.py}
+scripts. Both of them support \lstinline{--help} command and are described in more detail in
+\lstinline{README.md}. Data and error analysis were done in jupyter notebooks. Since evaluation
+was done with external script I couldn't store the results in easily parsable file format, and metrics are
+stored as txt files. All the code, data, metrics, notebooks, baseline and best negation cue detection model
+are available in github repository\footnote{\href{https://github.uio.no/filipste/INF5820-Assignment4}{https://github.uio.no/filipste/INF5820-Assignment4}}.
 \section{Preliminaries: Making Sense of the EPE File Format}
 
 
@@ -71,10 +78,12 @@ on each line of the file. Sentences may be converted to \lstinline{.tt} format b
 \subsection{Summary Statistics Extractions}
 I have extracted requested statistics from all the available sentences (using both
 training and developement set). Statistics below are computed for all the types of negation
-cues and for multi-token and affix cues separately. General negation scope has on average
+cues and for multi-token and affix cues separately. Generally negation scope has on average
 length of $8$. Number of negation tokens drops extremely quickly, to the point where most of
 the negations occur only once.
-
+When analysing the multi-token negation cues it is worth noticing,
+that some of those have length equal 0, this is the case when the negation cue makes the whole sentence,
+in example \textit{"By no means."}
 \begin{figure}[h]
     \begin{subfigure}{0.5\textwidth}
         \centering
@@ -87,9 +96,6 @@ the negations occur only once.
     \caption{General statistics for negation cues.}
 \end{figure}
 
-When analysing the multi-token negation cues it is worth noticing,
-that some of those have length equal 0, this is the case when the negation cue makes the whole sentence,
-in example \textit{"By no means."}
 
 \begin{figure}[h]
     \begin{subfigure}{0.45\textwidth}
@@ -106,6 +112,7 @@ in example \textit{"By no means."}
     \caption{count and mean scope length for 10 most frequent cues}
 \end{figure}
 
+\newpage
 \section{A Joint Cue and Scope Sequence Tagger}
 \subsection{End-to-end Negation Resolution System}
 The Negation Resolution System that I have build uses Estimator class as a center point.
@@ -157,27 +164,26 @@ cues detection.
 with learning how to classify classes other that \textbf{T}. This is particulary visble
 with Affix \textbf{A} class, where there were only 33 examples and not even one was classified
 correctly.
-
+\begin{figure}[h]
+    \begin{subfigure}{0.45\textwidth}
+        \centering
+        \scalebox{0.8}{\input{./baseline_lstm.tex}}
+        \subcaption{LSTM}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.45\textwidth}
+        \centering
+        \scalebox{0.8}{\input{./baseline_gru.tex}}
+        \subcaption{GRU}
+    \end{subfigure}
+    \caption{tagging accuracy}
+    \end{figure}
 \paragraph{*SEM 2012 Scorer} evaluation using official *SEM 2012 scorer yelded very similar results.
-Score of \textit{Scope Tokens} that corresponds to \textit{False} if similar, I assume the 3\% difference
+Score of \textit{Scope Tokens} that corresponds to \textit{False} if similar, I assume the 2\% difference
 is caused by postprocessing heuristics. \textit{Cues} and \textit{Cue} tag have score difference of more
 than 10\% this is caused by the fact that in tag evaluation affix cues are treated as a different class, and
 in official scorrer they are counted as cues. Model predicts those cues very poorly, thus they lower the
 overall score.
-\begin{figure}[h]
-\begin{subfigure}{0.45\textwidth}
-    \centering
-    \scalebox{0.8}{\input{./baseline_lstm.tex}}
-    \subcaption{LSTM}
-\end{subfigure}
-\hfill
-\begin{subfigure}{0.45\textwidth}
-    \centering
-    \scalebox{0.8}{\input{./baseline_gru.tex}}
-    \subcaption{GRU}
-\end{subfigure}
-\caption{tagging accuracy}
-\end{figure}
 
 \begin{figure}[h]
 \begin{subfigure}{\textwidth}
@@ -224,7 +230,7 @@ I have trained and evaluated the system with different settings:
 In comparison to Fancellu's system, mine performed worse (Fancellu achieved best F1 score \textbf{88.72}).
 I believe the difference in the final results is caused by multiple minor differences, namely:
 \begin{itemize}
-\item the fact that in my systemaffix cues are treated differently
+\item the fact that in my system affix cues are treated differently
 \item the datasets are not exactly the same
 \item different word embeddings.
 \item different postprocessing heuristics
@@ -235,33 +241,61 @@ I believe the difference in the final results is caused by multiple minor differ
     \centering
     \includegraphics[scale=0.6]{../figures/confusion_matrix.png}
 \end{wrapfigure}
-I decided to perform error analysis on best model that is \textbf{BiLSTM - C + POS}. I started
+I decided to perform error analysis on best model that is \textbf{BiLSTM - C + POS} similar to one done by Fancellu. I started
 with plotting confusion matrix on tag level classification. Not suprisingly the model can distinguish
 perfectly between negation cues and scopes, since we provide this information explicitly. It also looks
 that it can distinguish quite well between affix and normal negation cues, and since the 3rd part of
 this assignment was focused on detecting solely negation scopes I want to focus on that aspect in my further
 analysis. Separately for \textbf{F} misclassified as \textbf{T} and \textbf{T} misclassified as \textbf{F}
 I performed following analysis: I have selected sentences in which such misclassification occurs and sorted
-them by the number of misclassified tokens. Then I highlighted all the scope tokens (or out of scope tokens in the
-second case) from the gold standard in \textcolor{blue}{blue}, then I highlighted correct predictions in \textcolor{teal}{green}
-and misclassification in \textcolor{red}{red}.
+them by the number of misclassified tokens. Then I highlighted all the scope tokens from the gold standard in \textcolor{blue}{blue}, then I highlighted correct predictions in \textcolor{teal}{green}
+and misclassification in \textcolor{red}{red}. Finally I tried to find interesting classes of errors in those sentences.
 
-\paragraph {Scope tokens missclassified as out of scope tokens} occured more frequent, one class of
-errors that seemd to be very popular is when the negation scope continues after conjunction or punctuation:
-\begin{displayquote}
-I desire you to \textcolor{blue}{spare} \underline{no} \textcolor{blue}{expense and no pains to get at the truth}.\\
-I desire you to \textcolor{teal}{spare} \underline{no} \textcolor{teal}{expense} \textcolor{red}{and no pains to get at the truth}.
-\end{displayquote}
-Suprisingly in multiple cases subject was excluded from the negation scope:
+\paragraph {Scope tokens missclassified as out of scope tokens} (59 sentences)\\
+Often, espetially when it was more complex, subject was excluded from the negation scope (10 sentences):
 
 \begin{displayquote}
 The crime was ascribed to Nihilism, and \textcolor{blue}{the murderers were} \underline{never} \textcolor{blue}{arrested}.\\
 The crime was ascribed to Nihilism, and \textcolor{red}{the murderers} \textcolor{teal}{were} \underline{never} \textcolor{teal}{arrested}.
 \end{displayquote}
+Another popular class of errors is when the negation scope continues after conjunction or punctuation (6 sentences):
+\begin{displayquote}
+I desire you to \textcolor{blue}{spare} \underline{no} \textcolor{blue}{expense and no pains to get at the truth}.\\
+I desire you to \textcolor{teal}{spare} \underline{no} \textcolor{teal}{expense} \textcolor{red}{and no pains to get at the truth}.
+\end{displayquote}
+Systam also had problems with detecting discontinues scopes seperated by interjection (4 sentences):
 
-\paragraph {Out of scope tokens classified as scope tokens} TODO
+\begin{displayquote}
+\textcolor{blue}{It was} \underline{not}, I must confess, \textcolor{blue}{a very alluring prospect}. \\
+\textcolor{teal}{it was} \underline{not}, I must confess, \textcolor{red}{a very alluring prospect}.
 
+\end{displayquote}
+    
+\paragraph {Out of scope tokens classified as scope tokens} (34 sentences)\\
+The negation scope was too wide
+and included the word that connects to the next part of sentence (such as \textit{that} or \textit{since})
+(3 sentences)
+\begin{displayquote}
+He says that \textcolor{blue}{they are} \underline{not} \textcolor{blue}{human}.\\
+He says \textcolor{red}{that} \textcolor{teal}{they are} \underline{not} \textcolor{teal}{human}.
+\end{displayquote}
+
+Moreover system had problems with detecting scopes for affix cues with very little examples (most of them occured
+only in one sentence or not at all in the trainig data) like: \textit{unburned}, \textit{inexplicable}, \textit{unbrushed}.
+\newpage
 \section{Further work}
-TODO
+I have a couple of ideas that one can implement to improve the performance of the system:
+\paragraph{Affix cues:} Treating them as a different class, even though more linguistically correct
+approach, seem not to improve results. I would argue that it even introduces undesirable noise since
+the network needs to keep the information in its memory to distinguish between \textbf{A} and \textbf{C}
+that seem not to contribute to scope detection. Since we still rely on the dictionary of known affix cues
+in preprocessing, I would treat them as a normal cues during training.
+\paragraph{Word Embeddings} In their work, Fancellu used custom word embeddings, it would be interesting
+to train such model and experiment if it improves the results.
+\paragraph{Dependency parsing information} Significant amount of errors are caused by model's inability to
+distinguish the boundries of the noun and verb phrases. One could try to include encoded dependency tree information
+to help model with this task, thus hopefully improving overall result.
+\paragraph{Attention} It would be interesting to experiment with including attention mechanism, It could
+help with capturing discontinues cues with the larger gaps between scopes.
 
 \end{document}
